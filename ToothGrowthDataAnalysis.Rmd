@@ -1,0 +1,97 @@
+---
+title: "Statistical Inference - Tooth Growth Data Analysis"
+author: "David Junor"
+date: "August 20, 2016"
+output: 
+        pdf_document:
+                latex_engine: xelatex
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(ggplot2)
+library(dplyr)
+library(knitr)
+```
+#Overview
+This is the second part of the two-part Coursera Statistical Inference course project.  In this section we examine the tooth growth data found in R.  It is the purpose of this document to provide a summary of the data and use confidence intervals and/or hypotheiss testing to compare tooth growth by delivery method and dose.
+
+#Exploratory Data Analysis
+
+####Load and Describe Data
+```{r, load dataset and describe}
+#Load the data and describe
+library(datasets)
+data("ToothGrowth")
+head(ToothGrowth, 6)
+dim(ToothGrowth)
+names(ToothGrowth)
+sum(!complete.cases(ToothGrowth))
+
+```
+The data has no missing values with 60 observations of three variables:  
+**len:** length of teeth   
+**supp:** delivery method (OJ: orange juice; VC: ascorbic acid)  
+**dose:** amount of vitamin C (0.5, 1, and 2 mg)  
+
+```{r, summarize the data}
+#Summarize the statistical properties of the data
+tgTable <- ToothGrowth %>% group_by(supp,dose) %>% summarize(n=length(len),mean=mean(len),sd=sd(len),se=sd/sqrt(n))
+kable(tgTable)
+```
+```{r, graph the data (SE), fig.width=5, fig.height=3}
+#Graph the SE of the data
+ggplot(tgTable, aes(x = dose, y = mean, color = supp)) +
+geom_errorbar(aes(ymin = mean - se, ymax = mean + se), width = .1) +
+        geom_line(size=1.25) +
+        geom_point(size=2, shape=21, fill="black") +
+        xlab("Dose (mg)") + ylab("Tooth Length") +
+        theme(legend.justification = c(1,0), legend.position = c(1,0))
+```
+
+Figure 1. Graph of the standard error of the mean of guinea pig tooth length.
+
+####Summary
+The summary table and graph appear to indicate that delivery method and dose have an effect on tooth growth.  The mean of tooth growth increases as dose increases with the VC and OJ delivery methods. The VC delivery method and dose of 2mg provided the largest increase in growth but had the largest variance.  Overall the OJ and VC delivery methods across doses appears to increase teeth length.
+
+#Data Analysis
+####Prepare Data
+```{r, filter data set by supp and dose}
+#Supplement
+vc <- ToothGrowth %>% filter(supp == "VC")
+oj <- ToothGrowth %>% filter(supp == "OJ")
+#Dose
+dose5 <- ToothGrowth %>% filter(dose == 0.5)
+dose1 <- ToothGrowth %>% filter(dose == 1.0)
+dose2 <- ToothGrowth %>% filter(dose == 2.0)
+```
+
+##Testing by Dosage
+Null Hypothesis: Dose does not have an effect on teeth growth in guinea pigs.
+
+```{r, Hypothesis testing of dosage using t-tests}
+#95% CI - Dose 0.5 vs Dose 1.0
+t.test(dose5$len, dose1$len, paired = FALSE, var.equal = FALSE)$conf
+t.test(dose5$len, dose1$len, paired = FALSE, var.equal = FALSE)$p.value
+#95% CI - Dose 0.5 vs Dose 2.0
+t.test(dose5$len, dose2$len, paired = FALSE, var.equal = FALSE)$conf
+t.test(dose5$len, dose2$len, paired = FALSE, var.equal = FALSE)$p.value
+#95% CI - Dose 1.0 vs Dose 2.0
+t.test(dose1$len, dose2$len, paired = FALSE, var.equal = FALSE)$conf
+t.test(dose1$len, dose2$len, paired = FALSE, var.equal = FALSE)$p.value
+```
+
+####Summary  
+All dosage intervals have p-values less than alpha at the 95% CI.  The null hypothesis is rejected.  It appears that as the dose of Vitamin C increases teeth length in guinea pigs increases.
+
+##Testing by Delivery Method
+Null Hypothesis:  Delivery method does not have an effect on teeth growth in guinnea pigs.
+
+```{r, Hypothesis testing of delivery method using t-tests}
+t.test(oj$len, vc$len, paired = FALSE, var.equal = FALSE)
+```
+####Summary
+The p-value for the test is greater than alpha at 95% and the CI includes 0.  We fail to reject the null hypothesis that delivery method has no effect on teeth growth in guinea pigs.
+
+#Conclusion
+It appears that the teeth growth in guinea pigs increases with increasing dosages of vitamin C.  The delivery method of vitamin C to guinea pigs did not appear to have an effect on teeth growth.
